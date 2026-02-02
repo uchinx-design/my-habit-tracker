@@ -2,11 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#2D69FF"/>
 <title>Loggd — Track Your Life</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://apis.google.com/js/api.js"></script>
 <style>
@@ -14,30 +19,54 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg-base: #0e0e12;
-  --bg-surface: #16161c;
-  --bg-elevated: #1e1e28;
-  --bg-card: #1a1a24;
-  --border: rgba(255,255,255,0.06);
-  --border-hover: rgba(255,255,255,0.12);
-  --text-primary: #f0eef5;
-  --text-secondary: #8a889a;
-  --text-muted: #55546a;
-  --accent: #7c6ef5;
-  --accent-glow: rgba(124,110,245,0.25);
-  --accent2: #5eead4;
-  --accent2-glow: rgba(94,234,212,0.2);
-  --streak: #f97316;
-  --streak-glow: rgba(249,115,22,0.25);
+  /* Light Mode - Your Custom Palette */
+  --bg-base: #E1F0FF;
+  --bg-surface: #f8fbff;
+  --bg-elevated: #ffffff;
+  --bg-card: #ffffff;
+  --border: rgba(45, 105, 159, 0.12);
+  --border-hover: rgba(45, 105, 159, 0.25);
+  --text-primary: #1a3a52;
+  --text-secondary: #2d699f;
+  --text-muted: #6b91b3;
+  --accent: #2D69FF;
+  --accent-glow: rgba(45, 105, 255, 0.2);
+  --accent2: #4BAA7D;
+  --accent2-glow: rgba(75, 170, 125, 0.2);
+  --accent3: #DCFFF0;
+  --streak: #2D69FF;
+  --streak-glow: rgba(45, 105, 255, 0.25);
   --danger: #ef4444;
-  --success: #22c55e;
-  --font-display: 'Syne', sans-serif;
-  --font-body: 'Outfit', sans-serif;
+  --success: #4BAA7D;
+  --font-display: 'Poppins', sans-serif;
+  --font-body: 'Poppins', sans-serif;
   --radius: 12px;
   --radius-sm: 8px;
   --radius-lg: 18px;
   --sidebar-w: 72px;
   --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* Dark Mode */
+body.dark-mode {
+  --bg-base: #0a1628;
+  --bg-surface: #0f1d32;
+  --bg-elevated: #152840;
+  --bg-card: #1a2f48;
+  --border: rgba(45, 105, 159, 0.2);
+  --border-hover: rgba(45, 105, 159, 0.35);
+  --text-primary: #e8f1f8;
+  --text-secondary: #a5c9e8;
+  --text-muted: #6b8ba8;
+  --accent: #2D69FF;
+  --accent-glow: rgba(45, 105, 255, 0.3);
+  --accent2: #4BAA7D;
+  --accent2-glow: rgba(75, 170, 125, 0.25);
+  --accent3: #1a3d2f;
+  --streak: #2D69FF;
+  --streak-glow: rgba(45, 105, 255, 0.3);
+  --danger: #f87171;
+  --success: #5bc58d;
 }
 
 html { font-size: 16px; }
@@ -49,6 +78,7 @@ body {
   display: flex;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* ─── SCROLLBAR ─── */
@@ -157,10 +187,10 @@ body {
 .stat-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px; font-weight: 500; }
 .stat-card .value { font-family: var(--font-display); font-size: 28px; font-weight: 700; }
 .stat-card .sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-.stat-card[data-stat="streak"] .value { color: var(--streak); text-shadow: 0 0 12px var(--streak-glow); }
+.stat-card[data-stat="streak"] .value { color: var(--accent); text-shadow: 0 0 12px var(--accent-glow); }
 .stat-card[data-stat="habits"] .value { color: var(--accent); }
 .stat-card[data-stat="tasks"] .value { color: var(--accent2); }
-.stat-card[data-stat="focus"] .value { color: #a78bfa; }
+.stat-card[data-stat="focus"] .value { color: #2D69FF; }
 
 /* Dashboard grid */
 .dash-grid {
@@ -231,7 +261,7 @@ body {
   transition: all var(--transition);
 }
 .habit-item:hover { border-color: var(--border-hover); }
-.habit-item.completed { border-color: rgba(124,110,245,0.3); background: rgba(124,110,245,0.04); }
+.habit-item.completed { border-color: rgba(75,170,125,0.4); background: var(--accent3); }
 .habit-check {
   width: 24px; height: 24px; border-radius: 6px;
   border: 2px solid var(--border-hover);
@@ -241,7 +271,7 @@ body {
   transition: all var(--transition); flex-shrink: 0;
 }
 .habit-check:hover { border-color: var(--accent); }
-.habit-item.completed .habit-check { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+.habit-item.completed .habit-check { background: var(--accent2); border-color: var(--accent2); box-shadow: 0 0 10px var(--accent2-glow); }
 .habit-check svg { width: 14px; height: 14px; color: #fff; opacity: 0; transition: opacity 0.15s; }
 .habit-item.completed .habit-check svg { opacity: 1; }
 .habit-info { flex: 1; min-width: 0; }
@@ -674,9 +704,21 @@ select.modal-input { appearance: none; cursor: pointer; }
 }
 .gam-toggle:hover { border-color: var(--accent); color: var(--accent); }
 
+/* ─── THEME TOGGLE BUTTON ─── */
+.theme-toggle {
+  position: fixed; right: 70px; top: 28px; z-index: 50;
+  width: 40px; height: 40px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg-card);
+  color: var(--text-muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+  font-size: 18px;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); transform: rotate(20deg); }
+
 /* ─── SYNC STATUS ─── */
 .sync-status {
-  position: fixed; right: 70px; top: 28px; z-index: 50;
+  position: fixed; right: 122px; top: 28px; z-index: 50;
   display: flex; align-items: center; gap: 8px;
   padding: 8px 14px; border-radius: 10px;
   border: 1px solid var(--border); background: var(--bg-card);
@@ -707,8 +749,8 @@ select.modal-input { appearance: none; cursor: pointer; }
 
 .drive-connect-banner {
   position: fixed; top: 0; left: var(--sidebar-w); right: 0;
-  background: linear-gradient(135deg, rgba(124,110,245,0.15), rgba(94,234,212,0.15));
-  border-bottom: 1px solid rgba(124,110,245,0.3);
+  background: linear-gradient(135deg, rgba(45,105,255,0.1), rgba(75,170,125,0.1));
+  border-bottom: 1px solid rgba(45,105,255,0.2);
   padding: 12px 32px;
   display: flex; align-items: center; justify-content: space-between;
   z-index: 90;
@@ -745,6 +787,345 @@ select.modal-input { appearance: none; cursor: pointer; }
   .vision-grid { grid-template-columns: repeat(2, 1fr); }
   .notes-layout { grid-template-columns: 1fr; }
   .notes-sidebar { display: none; }
+}
+
+/* ─── MOBILE RESPONSIVE ─── */
+@media (max-width: 768px) {
+  :root {
+    --sidebar-w: 0px;
+  }
+  
+  /* Hide sidebar on mobile, show bottom nav instead */
+  .sidebar {
+    display: none;
+  }
+  
+  /* Main content takes full width */
+  .main {
+    margin-left: 0;
+    padding: 16px 16px 80px 16px; /* Extra bottom padding for bottom nav */
+  }
+  
+  /* Move top controls to be mobile-friendly */
+  .gam-toggle, .theme-toggle {
+    top: 12px;
+    width: 36px;
+    height: 36px;
+  }
+  .gam-toggle { right: 12px; }
+  .theme-toggle { right: 56px; }
+  .sync-status {
+    right: 100px;
+    top: 12px;
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+  
+  /* Stats in single column */
+  .stats-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  
+  /* Page header */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .page-header h1 {
+    font-size: 20px;
+  }
+  
+  /* Dash header */
+  .dash-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .dash-header h1 {
+    font-size: 22px;
+  }
+  
+  /* Cards */
+  .dash-card {
+    padding: 18px 16px;
+    border-radius: var(--radius);
+  }
+  
+  /* Heatmap - horizontal scroll on mobile */
+  .heatmap-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Vision grid single column */
+  .vision-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Goals page */
+  .goal-card {
+    padding: 16px 18px;
+  }
+  
+  /* Timer display */
+  .timer-display {
+    padding: 40px 24px 36px;
+  }
+  .timer-time {
+    font-size: 56px;
+  }
+  .timer-durations {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  /* Gamification panel - full screen overlay on mobile */
+  .gam-panel {
+    width: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-base);
+    border-left: none;
+    border-top: 1px solid var(--border);
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+  }
+  .gam-panel.open {
+    transform: translateY(0);
+  }
+  
+  /* Drive banner */
+  .drive-connect-banner {
+    left: 0;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 16px;
+    text-align: center;
+  }
+  .drive-connect-content {
+    flex-direction: column;
+    text-align: center;
+  }
+  .drive-connect-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+  .drive-connect-btn, .drive-dismiss-btn {
+    width: 100%;
+  }
+  
+  /* Modals */
+  .modal, .vision-modal {
+    width: 95%;
+    max-width: none;
+    padding: 24px 20px;
+  }
+  
+  /* Notes editor */
+  .notes-editor {
+    padding: 24px 16px;
+  }
+  .notes-editor-title {
+    font-size: 20px;
+  }
+  
+  /* Task and habit items - larger touch targets */
+  .habit-item, .task-item {
+    padding: 16px;
+  }
+  .habit-check, .task-check {
+    width: 28px;
+    height: 28px;
+  }
+  .habit-check {
+    border-radius: 8px;
+  }
+}
+
+/* ─── BOTTOM NAVIGATION (Mobile Only) ─── */
+@media (max-width: 768px) {
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 68px;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 8px 0;
+    z-index: 100;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+  }
+  
+  .bottom-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all var(--transition);
+    flex: 1;
+    max-width: 80px;
+  }
+  
+  .bottom-nav-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+  
+  .bottom-nav-btn.active {
+    color: var(--accent);
+    background: var(--accent-glow);
+  }
+  
+  .bottom-nav-btn:active {
+    transform: scale(0.95);
+  }
+}
+
+/* Hide bottom nav on desktop */
+@media (min-width: 769px) {
+  .bottom-nav {
+    display: none;
+  }
+}
+
+/* ─── EXTRA SMALL DEVICES ─── */
+@media (max-width: 480px) {
+  .main {
+    padding: 12px 12px 80px 12px;
+  }
+  
+  .stat-card .value {
+    font-size: 24px;
+  }
+  
+  .timer-time {
+    font-size: 48px;
+  }
+  
+  .bottom-nav-btn {
+    font-size: 9px;
+    padding: 6px 8px;
+  }
+  
+  .bottom-nav-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+  
+  /* Smaller badges grid */
+  .badge-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  /* Mobile menu modal */
+  .mobile-menu-overlay {
+    display: block;
+  }
+}
+
+/* ─── MOBILE MENU MODAL ─── */
+.mobile-menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 500;
+  display: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.mobile-menu-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.mobile-menu {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border-radius: 20px 20px 0 0;
+  padding: 24px 20px 32px;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.mobile-menu-overlay.open .mobile-menu {
+  transform: translateY(0);
+}
+.mobile-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.mobile-menu-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+}
+.mobile-menu-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+.mobile-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.mobile-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: center;
+}
+.mobile-menu-item:active {
+  transform: scale(0.95);
+}
+.mobile-menu-item svg {
+  width: 24px;
+  height: 24px;
+  color: var(--accent);
+}
+.mobile-menu-item span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 /* ─── ANIMATIONS ─── */
@@ -832,6 +1213,11 @@ select.modal-input { appearance: none; cursor: pointer; }
   </div>
 </div>
 
+<!-- ─── THEME TOGGLE ─── -->
+<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+  <span id="themeIcon">🌙</span>
+</button>
+
 <!-- ─── SYNC STATUS INDICATOR ─── -->
 <div class="sync-status" id="syncStatus" style="display:none;">
   <div class="sync-dot"></div>
@@ -882,12 +1268,12 @@ select.modal-input { appearance: none; cursor: pointer; }
         <div class="heatmap-container" id="heatmapContainer"></div>
         <div class="heatmap-legend">
           <span>Less</span>
-          <div class="heatmap-legend-cell" style="background:#1e1e28;border:1px solid rgba(255,255,255,0.08)"></div>
-          <div class="heatmap-legend-cell" style="background:rgba(124,110,245,0.2)"></div>
-          <div class="heatmap-legend-cell" style="background:rgba(124,110,245,0.4)"></div>
-          <div class="heatmap-legend-cell" style="background:rgba(124,110,245,0.6)"></div>
-          <div class="heatmap-legend-cell" style="background:rgba(124,110,245,0.85)"></div>
-          <div class="heatmap-legend-cell" style="background:#7c6ef5"></div>
+          <div class="heatmap-legend-cell" style="background:var(--bg-elevated);border:1px solid var(--border)"></div>
+          <div class="heatmap-legend-cell" style="background:rgba(45,105,255,0.2)"></div>
+          <div class="heatmap-legend-cell" style="background:rgba(45,105,255,0.4)"></div>
+          <div class="heatmap-legend-cell" style="background:rgba(45,105,255,0.6)"></div>
+          <div class="heatmap-legend-cell" style="background:rgba(45,105,255,0.85)"></div>
+          <div class="heatmap-legend-cell" style="background:#2D69FF"></div>
           <span>More</span>
         </div>
       </div>
@@ -1035,6 +1421,30 @@ select.modal-input { appearance: none; cursor: pointer; }
   </div>
 </div>
 
+<!-- ─── BOTTOM NAVIGATION (Mobile Only) ─── -->
+<nav class="bottom-nav" id="bottomNav">
+  <button class="bottom-nav-btn active" onclick="showPage('dashboard')" data-page="dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+    <span>Home</span>
+  </button>
+  <button class="bottom-nav-btn" onclick="showPage('habits')" data-page="habits">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+    <span>Habits</span>
+  </button>
+  <button class="bottom-nav-btn" onclick="showPage('tasks')" data-page="tasks">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    <span>Tasks</span>
+  </button>
+  <button class="bottom-nav-btn" onclick="showPage('timer')" data-page="timer">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <span>Timer</span>
+  </button>
+  <button class="bottom-nav-btn" onclick="showPageMobileMenu()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+    <span>More</span>
+  </button>
+</nav>
+
 <!-- ─── GAMIFICATION PANEL ─── -->
 <div class="gam-panel" id="gamPanel">
   <div class="gam-profile">
@@ -1169,6 +1579,42 @@ select.modal-input { appearance: none; cursor: pointer; }
   </div>
 </div>
 
+<!-- Mobile Menu Modal -->
+<div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="closeMobileMenu()">
+  <div class="mobile-menu" onclick="event.stopPropagation()">
+    <div class="mobile-menu-header">
+      <div class="mobile-menu-title">More</div>
+      <button class="mobile-menu-close" onclick="closeMobileMenu()">×</button>
+    </div>
+    <div class="mobile-menu-grid">
+      <div class="mobile-menu-item" onclick="showPage('journal'); closeMobileMenu();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+        <span>Journal</span>
+      </div>
+      <div class="mobile-menu-item" onclick="showPage('goals'); closeMobileMenu();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        <span>Goals</span>
+      </div>
+      <div class="mobile-menu-item" onclick="showPage('vision'); closeMobileMenu();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span>Vision</span>
+      </div>
+      <div class="mobile-menu-item" onclick="showPage('notes'); closeMobileMenu();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span>Notes</span>
+      </div>
+      <div class="mobile-menu-item" onclick="toggleGamPanel(); closeMobileMenu();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span>Achievements</span>
+      </div>
+      <div class="mobile-menu-item" onclick="toggleTheme(); closeMobileMenu();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <span>Theme</span>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Heatmap floating tooltip -->
 <div id="heatTip" style="position:fixed;pointer-events:none;z-index:999;opacity:0;transition:opacity 0.15s;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text-primary);white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.3);font-family:var(--font-body);"></div>
 
@@ -1183,8 +1629,8 @@ select.modal-input { appearance: none; cursor: pointer; }
 
 const DRIVE_CONFIG = {
   // REPLACE THIS with your own Client ID after setting up Google Cloud Project
-  CLIENT_ID: '166973066583-essp3mn2bcb34gsj1g27ugl18j8rt8fi.apps.googleusercontent.com',
-  API_KEY: 'AIzaSyAfwAAvFxPxWiDf6bLPhp3eNEFE4WlWptM',
+  CLIENT_ID: 'YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com',
+  API_KEY: 'YOUR_API_KEY_HERE',
   DISCOVERY_DOC: 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
   SCOPES: 'https://www.googleapis.com/auth/drive.file',
   FILE_NAME: 'loggd_data.json',
@@ -1557,8 +2003,19 @@ let xpData = getStore('xp', { xp: 120, level: 2, badges: {}, streak: 3 });
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
+  
   document.getElementById('page-'+name).classList.add('active');
-  document.querySelector('.nav-btn[data-page="'+name+'"]').classList.add('active');
+  
+  // Update sidebar nav
+  const sidebarBtn = document.querySelector('.nav-btn[data-page="'+name+'"]');
+  if(sidebarBtn) sidebarBtn.classList.add('active');
+  
+  // Update bottom nav
+  const bottomBtn = document.querySelector('.bottom-nav-btn[data-page="'+name+'"]');
+  if(bottomBtn) bottomBtn.classList.add('active');
+  
+  // Render page content
   if(name==='dashboard') renderDashboard();
   if(name==='habits') renderHabits();
   if(name==='tasks') renderTasks();
@@ -1566,6 +2023,18 @@ function showPage(name) {
   if(name==='notes') renderNotes();
   if(name==='vision') renderVision();
   if(name==='journal') renderJournal();
+  
+  // Scroll to top on page change
+  document.getElementById('mainContent').scrollTop = 0;
+}
+
+// Mobile menu functions
+function showPageMobileMenu() {
+  document.getElementById('mobileMenuOverlay').classList.add('open');
+}
+
+function closeMobileMenu() {
+  document.getElementById('mobileMenuOverlay').classList.remove('open');
 }
 
 // ═══════════════════════════════════════════════
@@ -1806,15 +2275,15 @@ function renderHeatmap() {
     let intensity = count === 0 ? 0 : count / maxCount;
 
     let fill;
-    if(count === 0) fill = 'rgba(30,30,40,1)';
+    if(count === 0) fill = 'var(--bg-elevated)';
     else {
-      // Interpolate from low saturation accent to full accent
+      // Interpolate from low saturation accent to full accent (blue)
       let alpha = 0.15 + (intensity * 0.85); // range 0.15 → 1.0
-      fill = `rgba(124,110,245,${alpha.toFixed(2)})`;
+      fill = `rgba(45,105,255,${alpha.toFixed(2)})`;
     }
 
     let isToday = (key === todayKey());
-    let borderStroke = isToday ? ' stroke="#7c6ef5" stroke-width="1.5"' : '';
+    let borderStroke = isToday ? ' stroke="#2D69FF" stroke-width="1.5"' : '';
 
     let dateLabel = date.toLocaleDateString('en-US',{month:'short',day:'numeric'});
     svg += `<rect class="heatmap-cell" x="${x}" y="${y}" width="${cellW}" height="${cellH}" fill="${fill}" rx="3" ry="3"${borderStroke}
@@ -2323,9 +2792,42 @@ function hideHeatTip() {
 }
 
 // ═══════════════════════════════════════════════
+// THEME TOGGLE
+// ═══════════════════════════════════════════════
+function toggleTheme() {
+  const body = document.body;
+  const icon = document.getElementById('themeIcon');
+  
+  body.classList.toggle('dark-mode');
+  
+  // Update icon
+  if (body.classList.contains('dark-mode')) {
+    icon.textContent = '☀️';
+    setStore('theme', 'dark');
+  } else {
+    icon.textContent = '🌙';
+    setStore('theme', 'light');
+  }
+}
+
+// Load saved theme on init
+function loadTheme() {
+  const savedTheme = getStore('theme', 'light');
+  const icon = document.getElementById('themeIcon');
+  
+  if (savedTheme === 'dark') {
+    document.body.classList.add('dark-mode');
+    icon.textContent = '☀️';
+  } else {
+    icon.textContent = '🌙';
+  }
+}
+
+// ═══════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════
 seedHeatmapData();
+loadTheme(); // Load saved theme
 renderDashboard();
 updateTimerDisplay();
 updateGamPanel();
