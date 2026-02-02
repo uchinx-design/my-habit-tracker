@@ -1,0 +1,2340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Loggd — Track Your Life</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js"></script>
+<style>
+/* ─── RESET & ROOT ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-base: #0e0e12;
+  --bg-surface: #16161c;
+  --bg-elevated: #1e1e28;
+  --bg-card: #1a1a24;
+  --border: rgba(255,255,255,0.06);
+  --border-hover: rgba(255,255,255,0.12);
+  --text-primary: #f0eef5;
+  --text-secondary: #8a889a;
+  --text-muted: #55546a;
+  --accent: #7c6ef5;
+  --accent-glow: rgba(124,110,245,0.25);
+  --accent2: #5eead4;
+  --accent2-glow: rgba(94,234,212,0.2);
+  --streak: #f97316;
+  --streak-glow: rgba(249,115,22,0.25);
+  --danger: #ef4444;
+  --success: #22c55e;
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'Outfit', sans-serif;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 18px;
+  --sidebar-w: 72px;
+  --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+
+html { font-size: 16px; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0;
+  gap: 6px;
+  position: fixed; left: 0; top: 0; bottom: 0;
+  z-index: 100;
+}
+.sidebar-logo {
+  width: 36px; height: 36px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 24px;
+  box-shadow: 0 0 18px var(--accent-glow);
+}
+.sidebar-logo svg { width: 20px; height: 20px; }
+.nav-btn {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+  position: relative;
+}
+.nav-btn:hover { background: var(--bg-elevated); color: var(--text-secondary); }
+.nav-btn.active { background: var(--accent-glow); color: var(--accent); }
+.nav-btn svg { width: 20px; height: 20px; }
+.nav-btn .tooltip {
+  position: absolute; left: calc(100% + 10px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 12px; font-weight: 500;
+  padding: 6px 10px; border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0; pointer-events: none;
+  transform: translateX(-6px);
+  transition: all 0.2s;
+}
+.nav-btn:hover .tooltip { opacity: 1; transform: translateX(0); }
+.sidebar-bottom { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+/* ─── MAIN LAYOUT ─── */
+.main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  overflow-y: auto;
+  height: 100vh;
+  padding: 28px 32px;
+}
+
+/* ─── PAGE SECTIONS (tabs) ─── */
+.page { display: none; animation: fadeIn 0.3s ease; }
+.page.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ─── DASHBOARD ─── */
+.dash-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px;
+}
+.dash-header h1 {
+  font-family: var(--font-display);
+  font-size: 26px; font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.dash-header .date-badge {
+  font-size: 13px; color: var(--text-muted);
+  background: var(--bg-elevated);
+  padding: 6px 14px; border-radius: 20px;
+  border: 1px solid var(--border);
+}
+
+/* Stats Row */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  transition: border-color var(--transition);
+}
+.stat-card:hover { border-color: var(--border-hover); }
+.stat-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px; font-weight: 500; }
+.stat-card .value { font-family: var(--font-display); font-size: 28px; font-weight: 700; }
+.stat-card .sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.stat-card[data-stat="streak"] .value { color: var(--streak); text-shadow: 0 0 12px var(--streak-glow); }
+.stat-card[data-stat="habits"] .value { color: var(--accent); }
+.stat-card[data-stat="tasks"] .value { color: var(--accent2); }
+.stat-card[data-stat="focus"] .value { color: #a78bfa; }
+
+/* Dashboard grid */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 16px;
+}
+.dash-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  transition: border-color var(--transition);
+}
+.dash-card:hover { border-color: var(--border-hover); }
+.dash-card .card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px;
+}
+.dash-card .card-title {
+  font-family: var(--font-display);
+  font-size: 14px; font-weight: 600;
+  color: var(--text-primary);
+  display: flex; align-items: center; gap: 8px;
+}
+.dash-card .card-title svg { width: 16px; height: 16px; opacity: 0.6; }
+.dash-card .card-action {
+  font-size: 11px; color: var(--accent);
+  background: none; border: none; cursor: pointer;
+  font-family: var(--font-body); font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.card-heatmap { grid-column: 1 / -1; }
+.card-habits {}
+.card-tasks {}
+.card-goals { grid-column: 1 / -1; }
+
+/* ─── HEATMAP ─── */
+.heatmap-container {
+  overflow-x: auto;
+  padding: 8px 0 4px;
+}
+.heatmap-svg { display: block; }
+.heatmap-cell {
+  rx: 3; ry: 3;
+  transition: opacity 0.2s;
+  cursor: pointer;
+}
+.heatmap-cell:hover { opacity: 0.7; }
+.heatmap-label { fill: var(--text-muted); font-size: 10px; font-family: var(--font-body); }
+.heatmap-legend {
+  display: flex; align-items: center; gap: 6px;
+  justify-content: flex-end;
+  margin-top: 10px;
+  font-size: 11px; color: var(--text-muted);
+}
+.heatmap-legend-cell { width: 12px; height: 12px; border-radius: 2px; }
+
+/* ─── HABITS MODULE ─── */
+.habit-list { display: flex; flex-direction: column; gap: 10px; }
+.habit-item {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  transition: all var(--transition);
+}
+.habit-item:hover { border-color: var(--border-hover); }
+.habit-item.completed { border-color: rgba(124,110,245,0.3); background: rgba(124,110,245,0.04); }
+.habit-check {
+  width: 24px; height: 24px; border-radius: 6px;
+  border: 2px solid var(--border-hover);
+  background: transparent;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition); flex-shrink: 0;
+}
+.habit-check:hover { border-color: var(--accent); }
+.habit-item.completed .habit-check { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+.habit-check svg { width: 14px; height: 14px; color: #fff; opacity: 0; transition: opacity 0.15s; }
+.habit-item.completed .habit-check svg { opacity: 1; }
+.habit-info { flex: 1; min-width: 0; }
+.habit-name { font-size: 14px; font-weight: 500; }
+.habit-item.completed .habit-name { color: var(--text-muted); text-decoration: line-through; }
+.habit-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.habit-streak {
+  font-size: 12px; font-weight: 600;
+  color: var(--streak);
+  display: flex; align-items: center; gap: 4px;
+}
+
+/* ─── TASKS MODULE ─── */
+.task-list { display: flex; flex-direction: column; gap: 8px; }
+.task-item {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  transition: all var(--transition);
+  cursor: pointer;
+}
+.task-item:hover { border-color: var(--border-hover); }
+.task-item.done { opacity: 0.4; }
+.task-item.done .task-name { text-decoration: line-through; }
+.task-check {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid var(--border-hover);
+  background: transparent; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition); flex-shrink: 0;
+}
+.task-check:hover { border-color: var(--accent2); }
+.task-item.done .task-check { background: var(--accent2); border-color: var(--accent2); }
+.task-name { font-size: 13px; flex: 1; }
+.task-priority {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px; padding: 3px 8px; border-radius: 4px;
+}
+.task-priority.high { background: rgba(239,68,68,0.15); color: #f87171; }
+.task-priority.medium { background: rgba(249,115,22,0.15); color: #fb923c; }
+.task-priority.low { background: rgba(94,234,212,0.15); color: var(--accent2); }
+.task-tag {
+  font-size: 10px; font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  padding: 3px 8px; border-radius: 4px;
+}
+
+/* ─── GOALS PROGRESS ─── */
+.goal-item {
+  display: flex; align-items: center; gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.goal-item:last-child { border-bottom: none; }
+.goal-icon { font-size: 20px; }
+.goal-info { flex: 1; min-width: 0; }
+.goal-name { font-size: 13px; font-weight: 500; }
+.goal-bar-bg {
+  height: 4px; background: var(--bg-elevated);
+  border-radius: 2px; margin-top: 6px; overflow: hidden;
+}
+.goal-bar-fill {
+  height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+.goal-pct { font-size: 12px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+
+/* ─── FOCUS TIMER ─── */
+.timer-page { max-width: 600px; margin: 0 auto; }
+.timer-display {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 32px;
+  padding: 60px 40px 50px;
+  text-align: center;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.timer-display::before {
+  content: '';
+  position: absolute; inset: -40px;
+  background: radial-gradient(circle at 50% 50%, var(--accent-glow) 0%, transparent 70%);
+  opacity: 0; transition: opacity 0.6s;
+  pointer-events: none;
+}
+.timer-display.running::before { opacity: 1; }
+.timer-session-label {
+  font-size: 12px; color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 20px; position: relative;
+}
+.timer-time {
+  font-family: var(--font-display);
+  font-size: 72px; font-weight: 700;
+  letter-spacing: -2px;
+  position: relative;
+  color: var(--text-primary);
+}
+.timer-display.running .timer-time { color: var(--accent); text-shadow: 0 0 30px var(--accent-glow); }
+.timer-task-link { font-size: 12px; color: var(--text-muted); margin-top: 12px; position: relative; }
+.timer-controls {
+  display: flex; justify-content: center; gap: 12px;
+  margin-top: 28px; position: relative;
+}
+.timer-btn {
+  padding: 12px 32px; border-radius: 10px; border: none;
+  font-family: var(--font-body); font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all var(--transition);
+}
+.timer-btn.primary { background: var(--accent); color: #fff; box-shadow: 0 4px 16px var(--accent-glow); }
+.timer-btn.primary:hover { background: #6a5de8; transform: translateY(-1px); }
+.timer-btn.secondary { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border); }
+.timer-btn.secondary:hover { border-color: var(--border-hover); }
+.timer-durations {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+}
+.timer-dur-btn {
+  padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg-elevated); color: var(--text-muted);
+  font-family: var(--font-body); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all var(--transition);
+}
+.timer-dur-btn:hover { border-color: var(--accent); color: var(--accent); }
+.timer-dur-btn.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
+.timer-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin-top: 24px;
+}
+.timer-stat {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; text-align: center;
+}
+.timer-stat .ts-val { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--accent); }
+.timer-stat .ts-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ─── JOURNAL ─── */
+.journal-page { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.journal-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 24px;
+}
+.journal-card h3 { font-family: var(--font-display); font-size: 15px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.mood-selector { display: flex; gap: 8px; margin-bottom: 20px; }
+.mood-btn {
+  flex: 1; padding: 10px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--bg-elevated);
+  font-size: 22px; cursor: pointer; text-align: center;
+  transition: all var(--transition);
+}
+.mood-btn:hover { border-color: var(--border-hover); transform: scale(1.05); }
+.mood-btn.selected { border-color: var(--accent); background: var(--accent-glow); box-shadow: 0 0 12px var(--accent-glow); }
+.journal-textarea {
+  width: 100%; min-height: 140px;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px; color: var(--text-primary);
+  font-family: var(--font-body); font-size: 13px; line-height: 1.6;
+  resize: vertical; outline: none; transition: border-color var(--transition);
+}
+.journal-textarea:focus { border-color: var(--accent); }
+.journal-textarea::placeholder { color: var(--text-muted); }
+.journal-save-btn {
+  margin-top: 12px; padding: 8px 20px; border-radius: 8px;
+  border: none; background: var(--accent); color: #fff;
+  font-family: var(--font-body); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all var(--transition);
+}
+.journal-save-btn:hover { background: #6a5de8; }
+.mood-history { display: flex; gap: 4px; margin-top: 12px; flex-wrap: wrap; }
+.mood-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; background: var(--bg-elevated); border: 1px solid var(--border); }
+
+/* ─── GOALS PAGE ─── */
+.goals-page-grid { display: flex; flex-direction: column; gap: 14px; }
+.goal-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px 24px;
+  transition: border-color var(--transition);
+}
+.goal-card:hover { border-color: var(--border-hover); }
+.goal-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.goal-card-title { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.goal-cat-badge {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px; padding: 3px 8px; border-radius: 4px;
+}
+.cat-career { background: rgba(124,110,245,0.15); color: #a5a0ff; }
+.cat-health { background: rgba(34,197,94,0.15); color: #4ade80; }
+.cat-financial { background: rgba(234,179,8,0.15); color: #facc15; }
+.cat-relationships { background: rgba(236,72,153,0.15); color: #f472b6; }
+.cat-growth { background: rgba(94,234,212,0.15); color: var(--accent2); }
+.goal-progress-bar {
+  height: 6px; background: var(--bg-elevated); border-radius: 3px; overflow: hidden;
+}
+.goal-progress-fill {
+  height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+.goal-milestones { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.milestone-item {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; color: var(--text-secondary);
+}
+.milestone-check {
+  width: 16px; height: 16px; border-radius: 4px;
+  border: 2px solid var(--border-hover);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; transition: all var(--transition);
+}
+.milestone-check.done { background: var(--success); border-color: var(--success); }
+
+/* ─── VISION PAGE ─── */
+.vision-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.vision-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 22px;
+  cursor: pointer; transition: all var(--transition);
+}
+.vision-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+.vision-card-icon { font-size: 26px; margin-bottom: 12px; }
+.vision-card-title { font-family: var(--font-display); font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.vision-card-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.vision-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.vision-modal-overlay.open { opacity: 1; pointer-events: auto; }
+.vision-modal {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 32px; width: 90%; max-width: 520px;
+  max-height: 80vh; overflow-y: auto;
+  transform: translateY(16px); transition: transform 0.25s;
+}
+.vision-modal-overlay.open .vision-modal { transform: translateY(0); }
+.vision-modal h2 { font-family: var(--font-display); font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.vision-modal .modal-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
+.vision-modal textarea {
+  width: 100%; min-height: 120px;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px; color: var(--text-primary);
+  font-family: var(--font-body); font-size: 13px; line-height: 1.6;
+  resize: vertical; outline: none;
+}
+.vision-modal textarea:focus { border-color: var(--accent); }
+.vision-modal-btns { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
+.modal-close-btn {
+  padding: 8px 18px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg-elevated); color: var(--text-secondary);
+  font-family: var(--font-body); font-size: 13px; cursor: pointer;
+}
+.modal-save-btn {
+  padding: 8px 18px; border-radius: 8px; border: none;
+  background: var(--accent); color: #fff;
+  font-family: var(--font-body); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+
+/* ─── NOTES PAGE ─── */
+.notes-layout { display: grid; grid-template-columns: 240px 1fr; gap: 0; height: calc(100vh - 120px); }
+.notes-sidebar {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  padding: 18px;
+  overflow-y: auto;
+}
+.notes-sidebar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.notes-sidebar-header span { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+.add-note-btn {
+  width: 28px; height: 28px; border-radius: 6px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text-muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+}
+.add-note-btn:hover { border-color: var(--accent); color: var(--accent); }
+.note-tree-item {
+  padding: 8px 10px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; color: var(--text-secondary);
+  transition: all var(--transition); display: flex; align-items: center; gap: 8px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.note-tree-item:hover { background: var(--bg-elevated); color: var(--text-primary); }
+.note-tree-item.active { background: var(--accent-glow); color: var(--accent); }
+.note-tree-item .note-icon { font-size: 14px; }
+.notes-editor {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  padding: 36px 40px;
+  overflow-y: auto;
+}
+.notes-editor-title {
+  font-family: var(--font-display); font-size: 24px; font-weight: 700;
+  outline: none; border: none; background: transparent;
+  color: var(--text-primary); width: 100%; margin-bottom: 20px;
+}
+.notes-editor-title::placeholder { color: var(--text-muted); }
+.notes-editor-body {
+  min-height: 300px; outline: none;
+  font-size: 14px; line-height: 1.8; color: var(--text-secondary);
+  border: none; background: transparent;
+  font-family: var(--font-body); width: 100%; resize: none;
+}
+.notes-editor-body::placeholder { color: var(--text-muted); }
+
+/* ─── GAMIFICATION PANEL ─── */
+.gam-panel {
+  position: fixed; right: 0; top: 0; bottom: 0;
+  width: 220px;
+  background: var(--bg-surface); border-left: 1px solid var(--border);
+  padding: 24px 18px;
+  overflow-y: auto;
+  display: none;
+}
+.gam-panel.open { display: block; }
+.gam-profile { text-align: center; margin-bottom: 24px; }
+.gam-avatar {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  margin: 0 auto 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 20px; font-weight: 700;
+}
+.gam-level { font-size: 13px; font-weight: 600; color: var(--accent); }
+.gam-xp { font-size: 11px; color: var(--text-muted); }
+.gam-xp-bar { height: 4px; background: var(--bg-elevated); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.gam-xp-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; transition: width 0.4s; }
+.gam-section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin: 20px 0 10px; font-weight: 600; }
+.badge-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.badge-item {
+  width: 100%; aspect-ratio: 1;
+  border-radius: 8px; background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; cursor: pointer; transition: all var(--transition);
+  position: relative;
+}
+.badge-item:hover { border-color: var(--border-hover); }
+.badge-item.locked { opacity: 0.3; filter: grayscale(1); }
+.badge-item .badge-tooltip {
+  position: absolute; bottom: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  color: var(--text-primary); font-size: 10px; padding: 4px 8px;
+  border-radius: 4px; white-space: nowrap; opacity: 0; pointer-events: none;
+  transition: opacity 0.15s; z-index: 10;
+}
+.badge-item:hover .badge-tooltip { opacity: 1; }
+.leaderboard-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.leaderboard-item:last-child { border-bottom: none; }
+.lb-rank { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--text-muted); width: 20px; }
+.lb-rank.gold { color: #facc15; }
+.lb-rank.silver { color: #94a3b8; }
+.lb-rank.bronze { color: #fb923c; }
+.lb-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--bg-elevated); display: flex; align-items: center; justify-content: center; font-size: 13px; }
+.lb-name { font-size: 12px; flex: 1; }
+.lb-xp { font-size: 11px; color: var(--accent); font-weight: 600; }
+
+/* ─── ADD MODALS ─── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: auto; }
+.modal {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 18px; padding: 28px; width: 90%; max-width: 420px;
+  transform: translateY(12px); transition: transform 0.25s;
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal h3 { font-family: var(--font-display); font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+.modal-field { margin-bottom: 14px; }
+.modal-field label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; font-weight: 500; }
+.modal-input {
+  width: 100%; padding: 10px 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--bg-elevated);
+  color: var(--text-primary); font-family: var(--font-body); font-size: 14px;
+  outline: none; transition: border-color var(--transition);
+}
+.modal-input:focus { border-color: var(--accent); }
+.modal-input::placeholder { color: var(--text-muted); }
+select.modal-input { appearance: none; cursor: pointer; }
+.modal-row { display: flex; gap: 10px; }
+.modal-row .modal-field { flex: 1; }
+.modal-btns { display: flex; gap: 10px; margin-top: 22px; justify-content: flex-end; }
+.modal-cancel {
+  padding: 9px 20px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg-elevated); color: var(--text-secondary);
+  font-family: var(--font-body); font-size: 13px; cursor: pointer;
+}
+.modal-submit {
+  padding: 9px 24px; border-radius: 8px; border: none;
+  background: var(--accent); color: #fff;
+  font-family: var(--font-body); font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background var(--transition);
+}
+.modal-submit:hover { background: #6a5de8; }
+
+/* ─── PAGE HEADER SHARED ─── */
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 24px;
+}
+.page-header h1 { font-family: var(--font-display); font-size: 22px; font-weight: 700; }
+.page-header .add-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 8px;
+  border: none; background: var(--accent); color: #fff;
+  font-family: var(--font-body); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background var(--transition);
+}
+.page-header .add-btn:hover { background: #6a5de8; }
+.page-header .add-btn svg { width: 14px; height: 14px; }
+
+/* ─── TOGGLE GAM PANEL BUTTON ─── */
+.gam-toggle {
+  position: fixed; right: 18px; top: 28px; z-index: 50;
+  width: 40px; height: 40px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg-card);
+  color: var(--text-muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+}
+.gam-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ─── SYNC STATUS ─── */
+.sync-status {
+  position: fixed; right: 70px; top: 28px; z-index: 50;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg-card);
+  font-size: 12px; font-weight: 500;
+  transition: all var(--transition);
+}
+.sync-status.syncing { border-color: var(--accent); color: var(--accent); }
+.sync-status.synced { border-color: var(--success); color: var(--success); }
+.sync-status.error { border-color: var(--danger); color: var(--danger); }
+.sync-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text-muted);
+}
+.sync-status.syncing .sync-dot { background: var(--accent); animation: pulse 1.5s infinite; }
+.sync-status.synced .sync-dot { background: var(--success); }
+.sync-status.error .sync-dot { background: var(--danger); }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+.sync-btn {
+  background: none; border: none;
+  color: var(--accent); cursor: pointer;
+  font-family: var(--font-body); font-size: 11px;
+  font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px; padding: 0; margin-left: 6px;
+  transition: opacity var(--transition);
+}
+.sync-btn:hover { opacity: 0.7; }
+
+.drive-connect-banner {
+  position: fixed; top: 0; left: var(--sidebar-w); right: 0;
+  background: linear-gradient(135deg, rgba(124,110,245,0.15), rgba(94,234,212,0.15));
+  border-bottom: 1px solid rgba(124,110,245,0.3);
+  padding: 12px 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  z-index: 90;
+  animation: slideDown 0.3s ease;
+}
+@keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+.drive-connect-banner.hidden { display: none; }
+.drive-connect-content { display: flex; align-items: center; gap: 12px; }
+.drive-connect-icon { font-size: 20px; }
+.drive-connect-text { font-size: 13px; line-height: 1.4; }
+.drive-connect-text strong { font-weight: 600; color: var(--accent); }
+.drive-connect-actions { display: flex; gap: 10px; }
+.drive-connect-btn {
+  padding: 7px 16px; border-radius: 8px;
+  border: none; background: var(--accent); color: #fff;
+  font-family: var(--font-body); font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: background var(--transition);
+}
+.drive-connect-btn:hover { background: #6a5de8; }
+.drive-dismiss-btn {
+  padding: 7px 16px; border-radius: 8px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body); font-size: 12px; font-weight: 500;
+  cursor: pointer;
+}
+
+/* ─── RESPONSIVE / ADJUSTMENTS ─── */
+@media (max-width: 900px) {
+  .dash-grid { grid-template-columns: 1fr; }
+  .card-heatmap, .card-goals { grid-column: 1; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .journal-page { grid-template-columns: 1fr; }
+  .vision-grid { grid-template-columns: repeat(2, 1fr); }
+  .notes-layout { grid-template-columns: 1fr; }
+  .notes-sidebar { display: none; }
+}
+
+/* ─── ANIMATIONS ─── */
+@keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.pop-in { animation: popIn 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+
+/* ─── HABIT SCHEDULE PILLS ─── */
+.schedule-pills { display: flex; gap: 4px; margin-top: 6px; }
+.sched-pill {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  font-size: 9px; font-weight: 600; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  text-transform: uppercase;
+}
+.sched-pill.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
+
+/* MAIN FOCUS HIGHLIGHT */
+.main-focus-badge {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--streak);
+  background: var(--streak-glow); padding: 2px 7px; border-radius: 4px;
+}
+</style>
+</head>
+<body>
+
+<!-- ─── SIDEBAR NAV ─── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+  </div>
+  <button class="nav-btn active" onclick="showPage('dashboard')" data-page="dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+    <span class="tooltip">Dashboard</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('habits')" data-page="habits">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+    <span class="tooltip">Habits</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('tasks')" data-page="tasks">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    <span class="tooltip">Tasks</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('timer')" data-page="timer">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <span class="tooltip">Focus Timer</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('journal')" data-page="journal">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+    <span class="tooltip">Journal</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('goals')" data-page="goals">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+    <span class="tooltip">Goals</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('vision')" data-page="vision">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    <span class="tooltip">Vision</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('notes')" data-page="notes">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    <span class="tooltip">Notes</span>
+  </button>
+  <div class="sidebar-bottom">
+    <button class="nav-btn" onclick="toggleGamPanel()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      <span class="tooltip">Achievements</span>
+    </button>
+  </div>
+</aside>
+
+<!-- ─── GOOGLE DRIVE CONNECT BANNER ─── -->
+<div class="drive-connect-banner" id="driveConnectBanner">
+  <div class="drive-connect-content">
+    <div class="drive-connect-icon">☁️</div>
+    <div class="drive-connect-text">
+      <strong>Sync across all your devices!</strong><br>
+      Connect Google Drive to auto-save your data and access it anywhere.
+    </div>
+  </div>
+  <div class="drive-connect-actions">
+    <button class="drive-connect-btn" onclick="connectGoogleDrive()">Connect Google Drive</button>
+    <button class="drive-dismiss-btn" onclick="dismissDriveBanner()">Maybe Later</button>
+  </div>
+</div>
+
+<!-- ─── SYNC STATUS INDICATOR ─── -->
+<div class="sync-status" id="syncStatus" style="display:none;">
+  <div class="sync-dot"></div>
+  <span id="syncStatusText">Not synced</span>
+  <button class="sync-btn" id="syncBtn" onclick="toggleSyncMenu()" style="display:none;">Settings</button>
+</div>
+
+<!-- ─── MAIN CONTENT ─── -->
+<div class="main" id="mainContent">
+
+  <!-- ════ DASHBOARD ════ -->
+  <div class="page active" id="page-dashboard">
+    <div class="dash-header">
+      <h1>Dashboard</h1>
+      <div class="date-badge" id="dashDate"></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card" data-stat="streak">
+        <div class="label">🔥 Streak</div>
+        <div class="value" id="statStreak">0</div>
+        <div class="sub">consecutive days</div>
+      </div>
+      <div class="stat-card" data-stat="habits">
+        <div class="label">✓ Habits Today</div>
+        <div class="value" id="statHabits">0/0</div>
+        <div class="sub">completed today</div>
+      </div>
+      <div class="stat-card" data-stat="tasks">
+        <div class="label">☑ Tasks Done</div>
+        <div class="value" id="statTasks">0</div>
+        <div class="sub">completed today</div>
+      </div>
+      <div class="stat-card" data-stat="focus">
+        <div class="label">⏱ Focus</div>
+        <div class="value" id="statFocus">0m</div>
+        <div class="sub">minutes today</div>
+      </div>
+    </div>
+    <div class="dash-grid">
+      <!-- Heatmap -->
+      <div class="dash-card card-heatmap">
+        <div class="card-header">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Activity Heatmap — <span id="heatmapYear">2026</span>
+          </div>
+        </div>
+        <div class="heatmap-container" id="heatmapContainer"></div>
+        <div class="heatmap-legend">
+          <span>Less</span>
+          <div class="heatmap-legend-cell" style="background:#1e1e28;border:1px solid rgba(255,255,255,0.08)"></div>
+          <div class="heatmap-legend-cell" style="background:rgba(124,110,245,0.2)"></div>
+          <div class="heatmap-legend-cell" style="background:rgba(124,110,245,0.4)"></div>
+          <div class="heatmap-legend-cell" style="background:rgba(124,110,245,0.6)"></div>
+          <div class="heatmap-legend-cell" style="background:rgba(124,110,245,0.85)"></div>
+          <div class="heatmap-legend-cell" style="background:#7c6ef5"></div>
+          <span>More</span>
+        </div>
+      </div>
+      <!-- Habits card -->
+      <div class="dash-card card-habits">
+        <div class="card-header">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+            Today's Habits
+          </div>
+          <button class="card-action" onclick="showPage('habits')">See All →</button>
+        </div>
+        <div class="habit-list" id="dashHabitList"></div>
+      </div>
+      <!-- Tasks card -->
+      <div class="dash-card card-tasks">
+        <div class="card-header">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+            Tasks
+          </div>
+          <button class="card-action" onclick="showPage('tasks')">See All →</button>
+        </div>
+        <div class="task-list" id="dashTaskList"></div>
+      </div>
+      <!-- Goals card -->
+      <div class="dash-card card-goals">
+        <div class="card-header">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            Goals Progress
+          </div>
+          <button class="card-action" onclick="showPage('goals')">Manage →</button>
+        </div>
+        <div id="dashGoalList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ HABITS PAGE ════ -->
+  <div class="page" id="page-habits">
+    <div class="page-header">
+      <h1>Habits</h1>
+      <button class="add-btn" onclick="openModal('habitModal')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Habit
+      </button>
+    </div>
+    <div class="habit-list" id="habitPageList"></div>
+  </div>
+
+  <!-- ════ TASKS PAGE ════ -->
+  <div class="page" id="page-tasks">
+    <div class="page-header">
+      <h1>Tasks</h1>
+      <button class="add-btn" onclick="openModal('taskModal')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Task
+      </button>
+    </div>
+    <div class="task-list" id="taskPageList"></div>
+  </div>
+
+  <!-- ════ TIMER PAGE ════ -->
+  <div class="page" id="page-timer">
+    <div class="timer-page">
+      <div class="timer-display" id="timerDisplay">
+        <div class="timer-session-label">Focus Session</div>
+        <div class="timer-time" id="timerTime">25:00</div>
+        <div class="timer-task-link" id="timerTaskLink">No task linked</div>
+        <div class="timer-controls">
+          <button class="timer-btn primary" id="timerStartBtn" onclick="timerToggle()">Start</button>
+          <button class="timer-btn secondary" onclick="timerReset()">Reset</button>
+        </div>
+      </div>
+      <div class="timer-durations">
+        <button class="timer-dur-btn" data-dur="15" onclick="setTimerDuration(15)">15 min</button>
+        <button class="timer-dur-btn active" data-dur="25" onclick="setTimerDuration(25)">25 min</button>
+        <button class="timer-dur-btn" data-dur="45" onclick="setTimerDuration(45)">45 min</button>
+        <button class="timer-dur-btn" data-dur="60" onclick="setTimerDuration(60)">60 min</button>
+        <button class="timer-dur-btn" data-dur="90" onclick="setTimerDuration(90)">90 min</button>
+      </div>
+      <div class="timer-stats">
+        <div class="timer-stat"><div class="ts-val" id="timerStatSessions">0</div><div class="ts-label">Sessions Today</div></div>
+        <div class="timer-stat"><div class="ts-val" id="timerStatMinutes">0</div><div class="ts-label">Focus Min</div></div>
+        <div class="timer-stat"><div class="ts-val" id="timerStatStreak">0</div><div class="ts-label">Day Streak</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ JOURNAL PAGE ════ -->
+  <div class="page" id="page-journal">
+    <div class="page-header"><h1>Journal</h1></div>
+    <div class="journal-page">
+      <div class="journal-card">
+        <h3>🌅 Morning Planning</h3>
+        <div class="mood-selector" id="moodSelector"></div>
+        <textarea class="journal-textarea" id="morningJournal" placeholder="What do you want to accomplish today? What's your intention?"></textarea>
+        <button class="journal-save-btn" onclick="saveJournal('morning')">Save</button>
+        <div class="mood-history" id="moodHistory"></div>
+      </div>
+      <div class="journal-card">
+        <h3>🌙 Evening Reflection</h3>
+        <textarea class="journal-textarea" id="eveningJournal" placeholder="How did your day go? What are you grateful for? What can you improve?"></textarea>
+        <button class="journal-save-btn" onclick="saveJournal('evening')">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ GOALS PAGE ════ -->
+  <div class="page" id="page-goals">
+    <div class="page-header">
+      <h1>Goals</h1>
+      <button class="add-btn" onclick="openModal('goalModal')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Goal
+      </button>
+    </div>
+    <div class="goals-page-grid" id="goalsPageList"></div>
+  </div>
+
+  <!-- ════ VISION PAGE ════ -->
+  <div class="page" id="page-vision">
+    <div class="page-header"><h1>Vision</h1></div>
+    <div class="vision-grid" id="visionGrid"></div>
+  </div>
+
+  <!-- ════ NOTES PAGE ════ -->
+  <div class="page" id="page-notes">
+    <div class="notes-layout">
+      <div class="notes-sidebar">
+        <div class="notes-sidebar-header">
+          <span>Pages</span>
+          <button class="add-note-btn" onclick="addNote()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+        <div id="notesTree"></div>
+      </div>
+      <div class="notes-editor">
+        <input class="notes-editor-title" id="noteTitle" placeholder="Untitled" oninput="saveCurrentNote()"/>
+        <textarea class="notes-editor-body" id="noteBody" placeholder="Start writing… use / for commands" oninput="saveCurrentNote()"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── GAMIFICATION PANEL ─── -->
+<div class="gam-panel" id="gamPanel">
+  <div class="gam-profile">
+    <div class="gam-avatar" id="gamAvatar">Y</div>
+    <div class="gam-level" id="gamLevel">Level 1 · Novice</div>
+    <div class="gam-xp" id="gamXp">0 / 100 XP</div>
+    <div class="gam-xp-bar"><div class="gam-xp-fill" id="gamXpBar" style="width:0%"></div></div>
+  </div>
+  <div class="gam-section-title">Badges</div>
+  <div class="badge-grid" id="badgeGrid"></div>
+  <div class="gam-section-title">Leaderboard</div>
+  <div id="leaderboard"></div>
+</div>
+
+<!-- ─── MODALS ─── -->
+<!-- Habit Modal -->
+<div class="modal-overlay" id="habitModal">
+  <div class="modal">
+    <h3>New Habit</h3>
+    <div class="modal-field">
+      <label>Habit Name</label>
+      <input class="modal-input" id="newHabitName" placeholder="e.g. Morning Run"/>
+    </div>
+    <div class="modal-field">
+      <label>Emoji Icon</label>
+      <input class="modal-input" id="newHabitIcon" placeholder="🏃" maxlength="2" style="width:70px"/>
+    </div>
+    <div class="modal-field">
+      <label>Schedule</label>
+      <select class="modal-input" id="newHabitSchedule">
+        <option value="daily">Every Day</option>
+        <option value="weekdays">Weekdays</option>
+        <option value="weekends">Weekends</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('habitModal')">Cancel</button>
+      <button class="modal-submit" onclick="addHabit()">Add Habit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Task Modal -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <h3>New Task</h3>
+    <div class="modal-field">
+      <label>Task Name</label>
+      <input class="modal-input" id="newTaskName" placeholder="e.g. Finish report"/>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Priority</label>
+        <select class="modal-input" id="newTaskPriority">
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Category</label>
+        <select class="modal-input" id="newTaskTag">
+          <option value="Work">Work</option>
+          <option value="Personal">Personal</option>
+          <option value="Health">Health</option>
+          <option value="Finance">Finance</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label>Link to Goal (optional)</label>
+      <select class="modal-input" id="newTaskGoalLink">
+        <option value="">— None —</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('taskModal')">Cancel</button>
+      <button class="modal-submit" onclick="addTask()">Add Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- Goal Modal -->
+<div class="modal-overlay" id="goalModal">
+  <div class="modal">
+    <h3>New Goal</h3>
+    <div class="modal-field">
+      <label>Goal Name</label>
+      <input class="modal-input" id="newGoalName" placeholder="e.g. Read 12 books"/>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Category</label>
+        <select class="modal-input" id="newGoalCategory">
+          <option value="career">Career</option>
+          <option value="health">Health</option>
+          <option value="financial">Financial</option>
+          <option value="relationships">Relationships</option>
+          <option value="growth">Growth</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Target</label>
+        <input class="modal-input" id="newGoalTarget" placeholder="e.g. 12" type="number"/>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label>Current Progress</label>
+      <input class="modal-input" id="newGoalCurrent" placeholder="0" type="number"/>
+    </div>
+    <div class="modal-field">
+      <label>Icon</label>
+      <input class="modal-input" id="newGoalIcon" placeholder="📚" maxlength="2" style="width:70px"/>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('goalModal')">Cancel</button>
+      <button class="modal-submit" onclick="addGoal()">Add Goal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Vision Modal -->
+<div class="vision-modal-overlay" id="visionModal">
+  <div class="vision-modal">
+    <h2 id="visionModalTitle"></h2>
+    <div class="modal-desc" id="visionModalDesc"></div>
+    <textarea id="visionModalTA" placeholder="Write your thoughts here…"></textarea>
+    <div class="vision-modal-btns">
+      <button class="modal-close-btn" onclick="closeVisionModal()">Cancel</button>
+      <button class="modal-save-btn" onclick="saveVision()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Heatmap floating tooltip -->
+<div id="heatTip" style="position:fixed;pointer-events:none;z-index:999;opacity:0;transition:opacity 0.15s;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text-primary);white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.3);font-family:var(--font-body);"></div>
+
+<!-- ─────────────── JAVASCRIPT ─────────────── -->
+<script>
+
+// ═══════════════════════════════════════════════
+// GOOGLE DRIVE SYNC
+// ═══════════════════════════════════════════════
+// IMPORTANT: You need to create a Google Cloud Project and get your own Client ID
+// Instructions: https://developers.google.com/drive/api/quickstart/js
+
+const DRIVE_CONFIG = {
+  // REPLACE THIS with your own Client ID after setting up Google Cloud Project
+  CLIENT_ID: 'YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com',
+  API_KEY: 'YOUR_API_KEY_HERE',
+  DISCOVERY_DOC: 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
+  SCOPES: 'https://www.googleapis.com/auth/drive.file',
+  FILE_NAME: 'loggd_data.json',
+};
+
+let driveState = {
+  tokenClient: null,
+  gapiInited: false,
+  gisInited: false,
+  accessToken: null,
+  fileId: null,
+  syncInterval: null,
+};
+
+// Initialize Google APIs
+function gapiLoaded() {
+  gapi.load('client', initializeGapiClient);
+}
+
+async function initializeGapiClient() {
+  try {
+    await gapi.client.init({
+      apiKey: DRIVE_CONFIG.API_KEY,
+      discoveryDocs: [DRIVE_CONFIG.DISCOVERY_DOC],
+    });
+    driveState.gapiInited = true;
+    maybeEnableSync();
+  } catch(e) {
+    console.error('GAPI init error:', e);
+  }
+}
+
+function gisLoaded() {
+  driveState.tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: DRIVE_CONFIG.CLIENT_ID,
+    scope: DRIVE_CONFIG.SCOPES,
+    callback: handleAuthResponse,
+  });
+  driveState.gisInited = true;
+  maybeEnableSync();
+}
+
+function maybeEnableSync() {
+  if (driveState.gapiInited && driveState.gisInited) {
+    // Check if we have stored auth
+    const storedToken = getStore('drive_token', null);
+    if (storedToken) {
+      driveState.accessToken = storedToken;
+      gapi.client.setToken({ access_token: storedToken });
+      driveState.fileId = getStore('drive_file_id', null);
+      enableSync();
+    }
+  }
+}
+
+function handleAuthResponse(resp) {
+  if (resp.error !== undefined) {
+    updateSyncStatus('error', 'Auth failed');
+    return;
+  }
+  driveState.accessToken = resp.access_token;
+  setStore('drive_token', resp.access_token);
+  gapi.client.setToken({ access_token: resp.access_token });
+  enableSync();
+}
+
+function connectGoogleDrive() {
+  if (!driveState.gisInited) {
+    alert('⚠️ Google Sign-In not ready. Please refresh the page and try again.');
+    return;
+  }
+  
+  // Check if we need to set up the Client ID first
+  if (DRIVE_CONFIG.CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID')) {
+    showSetupInstructions();
+    return;
+  }
+  
+  driveState.tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+function showSetupInstructions() {
+  alert(`📋 SETUP REQUIRED:
+
+Before you can sync with Google Drive, you need to:
+
+1. Go to: https://console.cloud.google.com/
+2. Create a new project (or select existing)
+3. Enable "Google Drive API"
+4. Create OAuth 2.0 credentials (Web application)
+5. Add your website URL to "Authorized JavaScript origins"
+6. Copy your Client ID and API Key
+7. Edit index.html and replace:
+   - YOUR_GOOGLE_CLIENT_ID_HERE
+   - YOUR_API_KEY_HERE
+
+Full guide: https://developers.google.com/drive/api/quickstart/js
+
+Don't worry - it takes just 5 minutes and it's free!`);
+}
+
+async function enableSync() {
+  dismissDriveBanner();
+  updateSyncStatus('syncing', 'Connecting...');
+  
+  try {
+    // Find or create the data file
+    await findOrCreateDataFile();
+    
+    // Do initial sync
+    await syncFromDrive();
+    
+    updateSyncStatus('synced', 'Synced');
+    document.getElementById('syncStatus').style.display = 'flex';
+    document.getElementById('syncBtn').style.display = 'block';
+    
+    // Auto-sync every 30 seconds
+    if (driveState.syncInterval) clearInterval(driveState.syncInterval);
+    driveState.syncInterval = setInterval(syncToDrive, 30000);
+    
+  } catch(e) {
+    console.error('Sync enable error:', e);
+    updateSyncStatus('error', 'Sync failed');
+  }
+}
+
+async function findOrCreateDataFile() {
+  try {
+    // Search for existing file
+    const response = await gapi.client.drive.files.list({
+      q: `name='${DRIVE_CONFIG.FILE_NAME}' and trashed=false`,
+      spaces: 'drive',
+      fields: 'files(id, name)',
+    });
+    
+    if (response.result.files && response.result.files.length > 0) {
+      driveState.fileId = response.result.files[0].id;
+      setStore('drive_file_id', driveState.fileId);
+    } else {
+      // Create new file
+      await createDataFile();
+    }
+  } catch(e) {
+    console.error('Find file error:', e);
+    throw e;
+  }
+}
+
+async function createDataFile() {
+  const metadata = {
+    name: DRIVE_CONFIG.FILE_NAME,
+    mimeType: 'application/json',
+  };
+  
+  const allData = getAllLocalData();
+  const fileContent = JSON.stringify(allData, null, 2);
+  
+  const file = new Blob([fileContent], { type: 'application/json' });
+  const formData = new FormData();
+  formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+  formData.append('file', file);
+  
+  const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + driveState.accessToken },
+    body: formData,
+  });
+  
+  const result = await response.json();
+  driveState.fileId = result.id;
+  setStore('drive_file_id', result.id);
+}
+
+function getAllLocalData() {
+  return {
+    habits,
+    tasks,
+    goals,
+    journal,
+    notes,
+    visionData,
+    xpData,
+    timerState: { sessions: timerState.sessions, totalMinutes: timerState.totalMinutes },
+    lastSync: Date.now(),
+  };
+}
+
+async function syncToDrive() {
+  if (!driveState.fileId || !driveState.accessToken) return;
+  
+  updateSyncStatus('syncing', 'Syncing...');
+  
+  try {
+    const allData = getAllLocalData();
+    const fileContent = JSON.stringify(allData, null, 2);
+    
+    const response = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveState.fileId}?uploadType=media`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': 'Bearer ' + driveState.accessToken,
+        'Content-Type': 'application/json',
+      },
+      body: fileContent,
+    });
+    
+    if (response.ok) {
+      updateSyncStatus('synced', 'Synced');
+    } else {
+      throw new Error('Upload failed');
+    }
+  } catch(e) {
+    console.error('Sync to Drive error:', e);
+    updateSyncStatus('error', 'Sync failed');
+  }
+}
+
+async function syncFromDrive() {
+  if (!driveState.fileId || !driveState.accessToken) return;
+  
+  updateSyncStatus('syncing', 'Loading...');
+  
+  try {
+    const response = await gapi.client.drive.files.get({
+      fileId: driveState.fileId,
+      alt: 'media',
+    });
+    
+    const data = response.result;
+    
+    // Load all data
+    if (data.habits) { habits = data.habits; setStore('habits', habits); }
+    if (data.tasks) { tasks = data.tasks; setStore('tasks', tasks); }
+    if (data.goals) { goals = data.goals; setStore('goals', goals); }
+    if (data.journal) { journal = data.journal; setStore('journal', journal); }
+    if (data.notes) { notes = data.notes; setStore('notes', notes); }
+    if (data.visionData) { visionData = data.visionData; setStore('vision', visionData); }
+    if (data.xpData) { xpData = data.xpData; setStore('xp', xpData); }
+    if (data.timerState) {
+      timerState.sessions = data.timerState.sessions || 0;
+      timerState.totalMinutes = data.timerState.totalMinutes || 0;
+    }
+    
+    // Re-render everything
+    renderDashboard();
+    updateSyncStatus('synced', 'Synced');
+    
+  } catch(e) {
+    console.error('Sync from Drive error:', e);
+    updateSyncStatus('error', 'Load failed');
+  }
+}
+
+function updateSyncStatus(state, text) {
+  const el = document.getElementById('syncStatus');
+  const textEl = document.getElementById('syncStatusText');
+  el.className = 'sync-status ' + state;
+  textEl.textContent = text;
+}
+
+function dismissDriveBanner() {
+  document.getElementById('driveConnectBanner').classList.add('hidden');
+  setStore('drive_banner_dismissed', true);
+}
+
+function toggleSyncMenu() {
+  const menu = `
+Sync Status: ${driveState.fileId ? 'Connected ✓' : 'Not connected'}
+
+Options:
+• Disconnect Google Drive
+• Force sync now
+• View sync history
+  `;
+  if (confirm('Disconnect Google Drive?\n\nYour data will stay on this device, but won\'t sync anymore.')) {
+    disconnectDrive();
+  }
+}
+
+function disconnectDrive() {
+  driveState.accessToken = null;
+  driveState.fileId = null;
+  localStorage.removeItem('loggd_drive_token');
+  localStorage.removeItem('loggd_drive_file_id');
+  if (driveState.syncInterval) clearInterval(driveState.syncInterval);
+  document.getElementById('syncStatus').style.display = 'none';
+  document.getElementById('driveConnectBanner').classList.remove('hidden');
+  alert('✓ Disconnected from Google Drive.\n\nYour local data is safe. You can reconnect anytime.');
+}
+
+// Auto-load Google APIs
+if (typeof gapi !== 'undefined') {
+  gapiLoaded();
+}
+if (typeof google !== 'undefined') {
+  gisLoaded();
+}
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    if (typeof gapi !== 'undefined') gapiLoaded();
+    if (typeof google !== 'undefined') gisLoaded();
+  }, 500);
+});
+
+// ═══════════════════════════════════════════════
+// DATA STORE (localStorage)
+// ═══════════════════════════════════════════════
+function getStore(key, def) {
+  try { const v = localStorage.getItem('loggd_'+key); return v ? JSON.parse(v) : def; }
+  catch(e) { return def; }
+}
+function setStore(key, val) { 
+  localStorage.setItem('loggd_'+key, JSON.stringify(val));
+  // Auto-sync to Drive when data changes
+  if (driveState.fileId && driveState.accessToken) {
+    debounceSync();
+  }
+}
+
+// Debounce sync to avoid too many API calls
+let syncDebounceTimer = null;
+function debounceSync() {
+  clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(() => {
+    syncToDrive();
+  }, 2000); // Wait 2 seconds after last change
+}
+
+let habits = getStore('habits', [
+  { id:1, name:'Morning Routine', icon:'🌅', schedule:'daily', completions:{}, streak:0, createdAt: Date.now()-604800000 },
+  { id:2, name:'Read 30 min', icon:'📚', schedule:'weekdays', completions:{}, streak:0, createdAt: Date.now()-432000000 },
+  { id:3, name:'Exercise', icon:'🏃', schedule:'daily', completions:{}, streak:0, createdAt: Date.now()-259200000 },
+  { id:4, name:'Drink 8 glasses of water', icon:'💧', schedule:'daily', completions:{}, streak:0, createdAt: Date.now()-86400000 },
+]);
+
+let tasks = getStore('tasks', [
+  { id:1, name:'Review proposal', priority:'high', tag:'Work', done:false, goalLink:'', mainFocus:true, createdAt: Date.now() },
+  { id:2, name:'Call dentist', priority:'medium', tag:'Personal', done:false, goalLink:'', mainFocus:false, createdAt: Date.now() },
+  { id:3, name:'Prepare slides', priority:'high', tag:'Work', done:false, goalLink:'', mainFocus:false, createdAt: Date.now() },
+  { id:4, name:'Buy groceries', priority:'low', tag:'Personal', done:false, goalLink:'', mainFocus:false, createdAt: Date.now() },
+]);
+
+let goals = getStore('goals', [
+  { id:1, name:'Read 12 books', icon:'📚', category:'growth', target:12, current:8, milestones:[{name:'Read 4 books',done:true},{name:'Read 8 books',done:true},{name:'Read 12 books',done:false}] },
+  { id:2, name:'Save $5000', icon:'💰', category:'financial', target:5000, current:3200, milestones:[{name:'Save $1000',done:true},{name:'Save $2500',done:true},{name:'Save $5000',done:false}] },
+  { id:3, name:'Run a marathon', icon:'🏅', category:'health', target:100, current:65, milestones:[{name:'Run 5K',done:true},{name:'Run half marathon',done:false},{name:'Run full marathon',done:false}] },
+]);
+
+let journal = getStore('journal', {});
+let notes = getStore('notes', [
+  { id:1, icon:'🚀', title:'Product Launch', body:'Planning the launch strategy for Q1 2026.\n\nKey focus areas:\n- Finalize landing page copy\n- Set up email sequences\n- Prepare launch day content' },
+  { id:2, icon:'💡', title:'Ideas', body:'Random ideas and brainstorms go here.' },
+  { id:3, icon:'📚', title:'Reading Notes', body:'Notes from books I\'m currently reading.' },
+]);
+let activeNoteId = notes.length > 0 ? notes[0].id : null;
+
+let visionData = getStore('vision', {});
+
+// ─── Timer State ───
+let timerState = { duration: 25*60, remaining: 25*60, running: false, interval: null, sessions: 0, totalMinutes: 0 };
+
+// ─── XP / Gamification ───
+let xpData = getStore('xp', { xp: 120, level: 2, badges: {}, streak: 3 });
+
+// ─── Heatmap data (habit completions per day) ───
+// Stored inside each habit's `completions` object as { "YYYY-MM-DD": true }
+
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelector('.nav-btn[data-page="'+name+'"]').classList.add('active');
+  if(name==='dashboard') renderDashboard();
+  if(name==='habits') renderHabits();
+  if(name==='tasks') renderTasks();
+  if(name==='goals') renderGoals();
+  if(name==='notes') renderNotes();
+  if(name==='vision') renderVision();
+  if(name==='journal') renderJournal();
+}
+
+// ═══════════════════════════════════════════════
+// UTILITY
+// ═══════════════════════════════════════════════
+function todayKey() {
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function formatDate(d) {
+  return d.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'});
+}
+function uid() { return Date.now() + Math.random(); }
+
+// ═══════════════════════════════════════════════
+// STREAK CALCULATOR
+// ═══════════════════════════════════════════════
+function calcStreak(habit) {
+  let streak = 0;
+  let d = new Date();
+  // Check if today is completed; if not, start from yesterday
+  let tk = todayKey();
+  if(!habit.completions[tk]) {
+    d.setDate(d.getDate()-1);
+  }
+  for(let i=0; i<365; i++) {
+    let key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    if(habit.completions[key]) { streak++; d.setDate(d.getDate()-1); }
+    else break;
+  }
+  return streak;
+}
+function calcGlobalStreak() {
+  // Global streak = consecutive days where at least 1 habit was completed
+  let streak = 0;
+  let d = new Date();
+  let tk = todayKey();
+  let anyToday = habits.some(h => h.completions[tk]);
+  if(!anyToday) d.setDate(d.getDate()-1);
+  for(let i=0; i<365; i++) {
+    let key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    let anyDay = habits.some(h => h.completions[key]);
+    if(anyDay) { streak++; d.setDate(d.getDate()-1); }
+    else break;
+  }
+  return streak;
+}
+
+// ═══════════════════════════════════════════════
+// XP SYSTEM
+// ═══════════════════════════════════════════════
+const LEVELS = [
+  {min:0,name:'Novice'},{min:100,name:'Apprentice'},{min:250,name:'Explorer'},
+  {min:500,name:'Seeker'},{min:800,name:'Achiever'},{min:1200,name:'Challenger'},
+  {min:1700,name:'Warrior'},{min:2400,name:'Master'},{min:3200,name:'Legend'},
+  {min:4200,name:'Eternal'}
+];
+function addXP(amount) {
+  xpData.xp += amount;
+  // level up
+  for(let i=LEVELS.length-1;i>=0;i--) {
+    if(xpData.xp >= LEVELS[i].min) { xpData.level = i+1; break; }
+  }
+  setStore('xp', xpData);
+  updateGamPanel();
+}
+function getLevelInfo() {
+  let lvl = 1, name = 'Novice', nextXp = 100;
+  for(let i=LEVELS.length-1;i>=0;i--) {
+    if(xpData.xp >= LEVELS[i].min) { lvl=i+1; name=LEVELS[i].name; nextXp = (i+1<LEVELS.length)?LEVELS[i+1].min:9999; break; }
+  }
+  return { lvl, name, nextXp, currentMin: LEVELS[lvl-1].min };
+}
+
+// ─── Badges ───
+const ALL_BADGES = [
+  {id:'first_habit',icon:'🌱',label:'First Habit'},
+  {id:'streak_3',icon:'🔥',label:'3 Day Streak'},
+  {id:'streak_7',icon:'🔥',label:'7 Day Streak'},
+  {id:'streak_21',icon:'🔥',label:'21 Day Streak'},
+  {id:'task_5',icon:'✅',label:'5 Tasks Done'},
+  {id:'task_10',icon:'✅',label:'10 Tasks Done'},
+  {id:'focus_1h',icon:'⏱',label:'1 Hour Focus'},
+  {id:'journal_write',icon:'📝',label:'First Journal'},
+  {id:'goal_added',icon:'🎯',label:'Goal Set'},
+  {id:'vision_written',icon:'👁',label:'Vision Written'},
+  {id:'notes_created',icon:'📄',label:'Note Created'},
+  {id:'level_3',icon:'⭐',label:'Reached Lv 3'},
+  {id:'level_5',icon:'⭐',label:'Reached Lv 5'},
+  {id:'habit_5',icon:'💪',label:'5 Habits Added'},
+  {id:'perfect_day',icon:'🌟',label:'Perfect Day'},
+  {id:'week_streak',icon:'📅',label:'Full Week'},
+];
+function checkBadges() {
+  let earned = xpData.badges;
+  if(habits.length>0 && !earned.first_habit) { earned.first_habit=true; addXP(10); }
+  if(habits.length>=5 && !earned.habit_5) { earned.habit_5=true; addXP(15); }
+  let gs = calcGlobalStreak();
+  if(gs>=3 && !earned.streak_3) { earned.streak_3=true; addXP(20); }
+  if(gs>=7 && !earned.streak_7) { earned.streak_7=true; addXP(30); }
+  if(gs>=21 && !earned.streak_21) { earned.streak_21=true; addXP(50); }
+  let doneCount = tasks.filter(t=>t.done).length;
+  if(doneCount>=5 && !earned.task_5) { earned.task_5=true; addXP(25); }
+  if(doneCount>=10 && !earned.task_10) { earned.task_10=true; addXP(30); }
+  if(goals.length>0 && !earned.goal_added) { earned.goal_added=true; addXP(15); }
+  let li = getLevelInfo();
+  if(li.lvl>=3 && !earned.level_3) { earned.level_3=true; addXP(20); }
+  if(li.lvl>=5 && !earned.level_5) { earned.level_5=true; addXP(30); }
+  // Perfect day: all habits done today
+  let tk = todayKey();
+  let allDone = habits.length>0 && habits.every(h=>h.completions[tk]);
+  if(allDone && !earned.perfect_day) { earned.perfect_day=true; addXP(50); }
+  xpData.badges = earned;
+  setStore('xp', xpData);
+}
+
+// ═══════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════
+function renderDashboard() {
+  document.getElementById('dashDate').textContent = formatDate(new Date());
+  // Stats
+  let tk = todayKey();
+  let habitsToday = habits.length;
+  let habitsDone = habits.filter(h=>h.completions[tk]).length;
+  document.getElementById('statStreak').textContent = calcGlobalStreak();
+  document.getElementById('statHabits').textContent = habitsDone+'/'+habitsToday;
+  let tasksDone = tasks.filter(t=>t.done).length;
+  document.getElementById('statTasks').textContent = tasksDone;
+  document.getElementById('statFocus').textContent = timerState.totalMinutes+'m';
+
+  // Habits
+  let hl = document.getElementById('dashHabitList');
+  hl.innerHTML = '';
+  habits.forEach(h => {
+    let done = !!h.completions[tk];
+    let streak = calcStreak(h);
+    hl.innerHTML += `<div class="habit-item ${done?'completed':''}" id="dh_${h.id}">
+      <div class="habit-check" onclick="toggleHabit(${h.id})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="habit-info"><div class="habit-name">${h.icon} ${h.name}</div><div class="habit-meta">${h.schedule}</div></div>
+      <div class="habit-streak">🔥 ${streak}</div>
+    </div>`;
+  });
+
+  // Tasks (show top 4)
+  let tl = document.getElementById('dashTaskList');
+  tl.innerHTML = '';
+  let sorted = [...tasks].sort((a,b)=> (a.mainFocus?0:1)-(b.mainFocus?0:1) || (a.done?1:0)-(b.done?1:0));
+  sorted.slice(0,4).forEach(t => {
+    tl.innerHTML += `<div class="task-item ${t.done?'done':''}" id="dt_${t.id}">
+      <div class="task-check" onclick="toggleTask(${t.id})"></div>
+      <div class="task-name">${t.mainFocus?'<span class="main-focus-badge">★ Main Focus</span> ':''} ${t.name}</div>
+      <span class="task-priority ${t.priority}">${t.priority}</span>
+      <span class="task-tag">${t.tag}</span>
+    </div>`;
+  });
+
+  // Goals
+  let gl = document.getElementById('dashGoalList');
+  gl.innerHTML = '';
+  goals.forEach(g => {
+    let pct = Math.min(100, Math.round((g.current/g.target)*100));
+    gl.innerHTML += `<div class="goal-item">
+      <div class="goal-icon">${g.icon}</div>
+      <div class="goal-info">
+        <div class="goal-name">${g.name}</div>
+        <div class="goal-bar-bg"><div class="goal-bar-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="goal-pct">${pct}%</div>
+    </div>`;
+  });
+
+  renderHeatmap();
+  checkBadges();
+  updateGamPanel();
+}
+
+// ═══════════════════════════════════════════════
+// HEATMAP (SVG — GitHub-style contribution graph)
+// Saturation logic: more habits completed → more saturated accent color
+// ═══════════════════════════════════════════════
+function renderHeatmap() {
+  const year = new Date().getFullYear();
+  document.getElementById('heatmapYear').textContent = year;
+
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const jan1 = new Date(year, 0, 1);
+  const startDow = jan1.getDay(); // 0=Sun
+  const totalDays = (year%4===0 && (year%100!==0||year%400===0)) ? 366 : 365;
+
+  const cellW = 13, cellH = 13, gap = 3, step = cellW+gap;
+  const cols = Math.ceil((totalDays + startDow) / 7);
+  const svgW = cols * step + 24; // extra for month labels
+  const svgH = 7 * step + 22; // extra for day labels
+
+  let svg = `<svg class="heatmap-svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}">`;
+
+  // Day labels (left)
+  const dayLabels = ['','M','','W','','F',''];
+  dayLabels.forEach((l,i) => {
+    if(l) svg += `<text class="heatmap-label" x="0" y="${i*step+11}">${l}</text>`;
+  });
+
+  const labelOffX = 22;
+
+  // Month labels
+  let lastMonth = -1;
+  for(let d=0; d<totalDays; d++) {
+    let date = new Date(year, 0, d+1);
+    let m = date.getMonth();
+    if(m !== lastMonth) {
+      let col = Math.floor((d + startDow) / 7);
+      svg += `<text class="heatmap-label" x="${labelOffX + col*step}" y="10">${months[m]}</text>`;
+      lastMonth = m;
+    }
+  }
+
+  // Cells
+  // First, gather completions count per day
+  for(let d=0; d<totalDays; d++) {
+    let date = new Date(year, 0, d+1);
+    let dow = date.getDay(); // 0=Sun
+    let col = Math.floor((d + startDow) / 7);
+    let row = dow;
+    let x = labelOffX + col * step;
+    let y = 18 + row * step;
+
+    let key = year+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+
+    // Count how many habits were completed on this day
+    let count = 0;
+    habits.forEach(h => { if(h.completions[key]) count++; });
+    let maxCount = habits.length || 1;
+
+    // Saturation: 0 habits = empty, maxCount habits = full accent
+    let intensity = count === 0 ? 0 : count / maxCount;
+
+    let fill;
+    if(count === 0) fill = 'rgba(30,30,40,1)';
+    else {
+      // Interpolate from low saturation accent to full accent
+      let alpha = 0.15 + (intensity * 0.85); // range 0.15 → 1.0
+      fill = `rgba(124,110,245,${alpha.toFixed(2)})`;
+    }
+
+    let isToday = (key === todayKey());
+    let borderStroke = isToday ? ' stroke="#7c6ef5" stroke-width="1.5"' : '';
+
+    let dateLabel = date.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    svg += `<rect class="heatmap-cell" x="${x}" y="${y}" width="${cellW}" height="${cellH}" fill="${fill}" rx="3" ry="3"${borderStroke}
+      onmouseenter="showHeatTip(event,'${dateLabel}',${count})"
+      onmouseleave="hideHeatTip()"
+    />`;
+  }
+
+  svg += '</svg>';
+  document.getElementById('heatmapContainer').innerHTML = svg;
+}
+
+// ═══════════════════════════════════════════════
+// HABITS
+// ═══════════════════════════════════════════════
+function toggleHabit(id) {
+  let h = habits.find(x=>x.id===id);
+  if(!h) return;
+  let tk = todayKey();
+  if(h.completions[tk]) { delete h.completions[tk]; }
+  else { h.completions[tk] = true; addXP(5); }
+  setStore('habits', habits);
+  checkBadges();
+  renderDashboard();
+  renderHabits();
+}
+function renderHabits() {
+  let el = document.getElementById('habitPageList');
+  el.innerHTML = '';
+  let tk = todayKey();
+  habits.forEach(h => {
+    let done = !!h.completions[tk];
+    let streak = calcStreak(h);
+    // Schedule pills
+    let days = ['S','M','T','W','T','F','S'];
+    let activeDays;
+    if(h.schedule==='daily') activeDays=[0,1,2,3,4,5,6];
+    else if(h.schedule==='weekdays') activeDays=[1,2,3,4,5];
+    else activeDays=[0,6];
+    let pills = days.map((d,i)=>`<div class="sched-pill ${activeDays.includes(i)?'active':''}">${d}</div>`).join('');
+
+    el.innerHTML += `<div class="habit-item ${done?'completed':''}" id="hp_${h.id}">
+      <div class="habit-check" onclick="toggleHabit(${h.id})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="habit-info">
+        <div class="habit-name">${h.icon} ${h.name}</div>
+        <div class="schedule-pills">${pills}</div>
+      </div>
+      <div class="habit-streak">🔥 ${streak}</div>
+      <button onclick="deleteHabit(${h.id})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:4px;">×</button>
+    </div>`;
+  });
+}
+function addHabit() {
+  let name = document.getElementById('newHabitName').value.trim();
+  let icon = document.getElementById('newHabitIcon').value.trim() || '⭐';
+  let schedule = document.getElementById('newHabitSchedule').value;
+  if(!name) return;
+  habits.push({ id:uid(), name, icon, schedule, completions:{}, streak:0, createdAt:Date.now() });
+  setStore('habits', habits);
+  closeModal('habitModal');
+  document.getElementById('newHabitName').value='';
+  document.getElementById('newHabitIcon').value='';
+  checkBadges();
+  renderHabits();
+  renderDashboard();
+}
+function deleteHabit(id) {
+  habits = habits.filter(h=>h.id!==id);
+  setStore('habits', habits);
+  renderHabits();
+  renderDashboard();
+}
+
+// ═══════════════════════════════════════════════
+// TASKS
+// ═══════════════════════════════════════════════
+function toggleTask(id) {
+  let t = tasks.find(x=>x.id===id);
+  if(!t) return;
+  t.done = !t.done;
+  if(t.done) addXP(8);
+  setStore('tasks', tasks);
+  checkBadges();
+  renderTasks();
+  renderDashboard();
+}
+function setMainFocus(id) {
+  tasks.forEach(t => t.mainFocus = (t.id===id));
+  setStore('tasks', tasks);
+  renderTasks();
+  renderDashboard();
+}
+function renderTasks() {
+  let el = document.getElementById('taskPageList');
+  el.innerHTML = '';
+  // Sort: main focus first, then undone, then done
+  let sorted = [...tasks].sort((a,b)=> (a.mainFocus?0:1)-(b.mainFocus?0:1) || (a.done?1:0)-(b.done?1:0));
+  sorted.forEach(t => {
+    el.innerHTML += `<div class="task-item ${t.done?'done':''}" id="tp_${t.id}">
+      <div class="task-check" onclick="toggleTask(${t.id})"></div>
+      <div class="task-name" onclick="setMainFocus(${t.id})" style="cursor:pointer;">
+        ${t.mainFocus?'<span class="main-focus-badge">★ Main Focus</span> ':''}${t.name}
+      </div>
+      <span class="task-priority ${t.priority}">${t.priority}</span>
+      <span class="task-tag">${t.tag}</span>
+      <button onclick="deleteTask(${t.id})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:4px;">×</button>
+    </div>`;
+  });
+}
+function addTask() {
+  let name = document.getElementById('newTaskName').value.trim();
+  let priority = document.getElementById('newTaskPriority').value;
+  let tag = document.getElementById('newTaskTag').value;
+  let goalLink = document.getElementById('newTaskGoalLink').value;
+  if(!name) return;
+  tasks.push({ id:uid(), name, priority, tag, done:false, goalLink, mainFocus:false, createdAt:Date.now() });
+  setStore('tasks', tasks);
+  closeModal('taskModal');
+  document.getElementById('newTaskName').value='';
+  renderTasks();
+  renderDashboard();
+}
+function deleteTask(id) {
+  tasks = tasks.filter(t=>t.id!==id);
+  setStore('tasks', tasks);
+  renderTasks();
+  renderDashboard();
+}
+
+// Populate goal links in task modal
+function populateTaskGoalLinks() {
+  let sel = document.getElementById('newTaskGoalLink');
+  sel.innerHTML = '<option value="">— None —</option>';
+  goals.forEach(g => { sel.innerHTML += `<option value="${g.id}">${g.icon} ${g.name}</option>`; });
+}
+
+// ═══════════════════════════════════════════════
+// FOCUS TIMER
+// ═══════════════════════════════════════════════
+function setTimerDuration(mins) {
+  if(timerState.running) return;
+  timerState.duration = mins*60;
+  timerState.remaining = mins*60;
+  document.querySelectorAll('.timer-dur-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.dur)===mins));
+  updateTimerDisplay();
+}
+function updateTimerDisplay() {
+  let m = Math.floor(timerState.remaining/60);
+  let s = timerState.remaining % 60;
+  document.getElementById('timerTime').textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  document.getElementById('timerStatSessions').textContent = timerState.sessions;
+  document.getElementById('timerStatMinutes').textContent = timerState.totalMinutes;
+  document.getElementById('timerStatStreak').textContent = calcGlobalStreak();
+}
+function timerToggle() {
+  if(timerState.running) {
+    clearInterval(timerState.interval);
+    timerState.running = false;
+    document.getElementById('timerDisplay').classList.remove('running');
+    document.getElementById('timerStartBtn').textContent = 'Resume';
+  } else {
+    timerState.running = true;
+    document.getElementById('timerDisplay').classList.add('running');
+    document.getElementById('timerStartBtn').textContent = 'Pause';
+    timerState.interval = setInterval(() => {
+      timerState.remaining--;
+      updateTimerDisplay();
+      if(timerState.remaining <= 0) {
+        clearInterval(timerState.interval);
+        timerState.running = false;
+        timerState.sessions++;
+        let mins = Math.round(timerState.duration/60);
+        timerState.totalMinutes += mins;
+        addXP(mins); // 1 XP per minute
+        document.getElementById('timerDisplay').classList.remove('running');
+        document.getElementById('timerStartBtn').textContent = 'Start';
+        // Check badge
+        if(timerState.totalMinutes >= 60 && !xpData.badges.focus_1h) {
+          xpData.badges.focus_1h = true; addXP(25);
+        }
+        alert('🎉 Session complete! Great focus!');
+      }
+    }, 1000);
+  }
+}
+function timerReset() {
+  clearInterval(timerState.interval);
+  timerState.running = false;
+  timerState.remaining = timerState.duration;
+  document.getElementById('timerDisplay').classList.remove('running');
+  document.getElementById('timerStartBtn').textContent = 'Start';
+  updateTimerDisplay();
+}
+
+// ═══════════════════════════════════════════════
+// JOURNAL
+// ═══════════════════════════════════════════════
+const MOODS = ['😞','😐','🙂','😄','🤩'];
+function renderJournal() {
+  let tk = todayKey();
+  let jd = journal[tk] || {};
+  document.getElementById('morningJournal').value = jd.morning || '';
+  document.getElementById('eveningJournal').value = jd.evening || '';
+  // Mood selector
+  let ms = document.getElementById('moodSelector');
+  ms.innerHTML = '';
+  MOODS.forEach((m,i) => {
+    ms.innerHTML += `<div class="mood-btn ${jd.mood===i?'selected':''}" onclick="selectMood(${i})">${m}</div>`;
+  });
+  // Mood history (last 7 days)
+  let mh = document.getElementById('moodHistory');
+  mh.innerHTML = '<span style="font-size:11px;color:var(--text-muted);margin-right:6px;">Last 7 days:</span>';
+  for(let i=6;i>=0;i--) {
+    let d = new Date(); d.setDate(d.getDate()-i);
+    let key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    let jentry = journal[key];
+    let mood = jentry && jentry.mood !== undefined ? MOODS[jentry.mood] : '·';
+    mh.innerHTML += `<div class="mood-dot" title="${key}">${mood}</div>`;
+  }
+  // Check badge
+  if(!xpData.badges.journal_write) {
+    // Will be set on save
+  }
+}
+function selectMood(idx) {
+  let tk = todayKey();
+  if(!journal[tk]) journal[tk] = {};
+  journal[tk].mood = idx;
+  setStore('journal', journal);
+  renderJournal();
+}
+function saveJournal(type) {
+  let tk = todayKey();
+  if(!journal[tk]) journal[tk] = {};
+  journal[tk][type] = document.getElementById(type==='morning'?'morningJournal':'eveningJournal').value;
+  setStore('journal', journal);
+  if(!xpData.badges.journal_write) { xpData.badges.journal_write=true; addXP(10); setStore('xp',xpData); }
+  addXP(3);
+}
+
+// ═══════════════════════════════════════════════
+// GOALS
+// ═══════════════════════════════════════════════
+function renderGoals() {
+  let el = document.getElementById('goalsPageList');
+  el.innerHTML = '';
+  goals.forEach(g => {
+    let pct = Math.min(100, Math.round((g.current/g.target)*100));
+    let catClass = 'cat-'+g.category;
+    let catLabel = g.category.charAt(0).toUpperCase()+g.category.slice(1);
+    let milestones = (g.milestones||[]).map((m,i) =>
+      `<div class="milestone-item">
+        <div class="milestone-check ${m.done?'done':''}" onclick="toggleMilestone(${g.id},${i})">
+          ${m.done?'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" width="10" height="10"><polyline points="20 6 9 17 4 12"/></svg>':''}
+        </div>${m.name}
+      </div>`
+    ).join('');
+
+    el.innerHTML += `<div class="goal-card">
+      <div class="goal-card-header">
+        <div class="goal-card-title">${g.icon} ${g.name} <span class="goal-cat-badge ${catClass}">${catLabel}</span></div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:12px;color:var(--text-muted)">${g.current}/${g.target}</span>
+          <button onclick="updateGoalProgress(${g.id})" style="background:none;border:1px solid var(--border);color:var(--accent);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:var(--font-body);">Update</button>
+          <button onclick="deleteGoal(${g.id})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;">×</button>
+        </div>
+      </div>
+      <div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${pct}%"></div></div>
+      <div class="goal-milestones">${milestones}</div>
+    </div>`;
+  });
+}
+function toggleMilestone(goalId, idx) {
+  let g = goals.find(x=>x.id===goalId);
+  if(!g || !g.milestones) return;
+  g.milestones[idx].done = !g.milestones[idx].done;
+  if(g.milestones[idx].done) addXP(10);
+  setStore('goals', goals);
+  renderGoals();
+}
+function updateGoalProgress(goalId) {
+  let g = goals.find(x=>x.id===goalId);
+  if(!g) return;
+  let val = prompt('Update progress (current: '+g.current+'/', g.target+'):', g.current);
+  if(val !== null && !isNaN(val)) {
+    g.current = Math.max(0, Math.min(g.target, Number(val)));
+    setStore('goals', goals);
+    if(g.current >= g.target) addXP(50);
+    renderGoals();
+    renderDashboard();
+  }
+}
+function addGoal() {
+  let name = document.getElementById('newGoalName').value.trim();
+  let category = document.getElementById('newGoalCategory').value;
+  let target = parseInt(document.getElementById('newGoalTarget').value) || 100;
+  let current = parseInt(document.getElementById('newGoalCurrent').value) || 0;
+  let icon = document.getElementById('newGoalIcon').value.trim() || '🎯';
+  if(!name) return;
+  goals.push({ id:uid(), name, icon, category, target, current, milestones:[] });
+  setStore('goals', goals);
+  closeModal('goalModal');
+  document.getElementById('newGoalName').value='';
+  document.getElementById('newGoalTarget').value='';
+  document.getElementById('newGoalCurrent').value='';
+  document.getElementById('newGoalIcon').value='';
+  addXP(5);
+  checkBadges();
+  renderGoals();
+  renderDashboard();
+}
+function deleteGoal(id) {
+  goals = goals.filter(g=>g.id!==id);
+  setStore('goals', goals);
+  renderGoals();
+  renderDashboard();
+}
+
+// ═══════════════════════════════════════════════
+// VISION
+// ═══════════════════════════════════════════════
+const VISION_EXERCISES = [
+  { id:'eulogy', icon:'📜', title:'The Eulogy Method', desc:'Imagine your funeral. What would loved ones say about you? What legacy do you want to leave?' },
+  { id:'bucket', icon:'🪣', title:'Bucket List', desc:'List the experiences, adventures, and achievements you want before you die. No limits.' },
+  { id:'mission', icon:'🎯', title:'Mission Statement', desc:'What is your purpose? Write a clear, inspiring statement of why you exist and what drives you.' },
+  { id:'success', icon:'✨', title:'Definition of Success', desc:'Forget society\'s definition. What does true success look like for YOU? Be brutally honest.' },
+  { id:'odyssey', icon:'🗺️', title:'Odyssey Plan', desc:'Map out three possible futures for yourself over the next 5 years. Which one excites you most?' },
+  { id:'future', icon:'📅', title:'Future Calendar', desc:'It\'s 5 years from now and everything went perfectly. Write a detailed journal entry of that day.' },
+];
+let activeVisionId = null;
+function renderVision() {
+  let el = document.getElementById('visionGrid');
+  el.innerHTML = '';
+  VISION_EXERCISES.forEach(v => {
+    let saved = visionData[v.id] ? '✓' : '';
+    el.innerHTML += `<div class="vision-card" onclick="openVision('${v.id}')">
+      <div class="vision-card-icon">${v.icon} ${saved}</div>
+      <div class="vision-card-title">${v.title}</div>
+      <div class="vision-card-desc">${v.desc.slice(0,80)}…</div>
+    </div>`;
+  });
+}
+function openVision(id) {
+  activeVisionId = id;
+  let ex = VISION_EXERCISES.find(v=>v.id===id);
+  document.getElementById('visionModalTitle').textContent = ex.icon+' '+ex.title;
+  document.getElementById('visionModalDesc').textContent = ex.desc;
+  document.getElementById('visionModalTA').value = visionData[id] || '';
+  document.getElementById('visionModal').classList.add('open');
+}
+function closeVisionModal() { document.getElementById('visionModal').classList.remove('open'); }
+function saveVision() {
+  visionData[activeVisionId] = document.getElementById('visionModalTA').value;
+  setStore('vision', visionData);
+  if(!xpData.badges.vision_written) { xpData.badges.vision_written=true; addXP(15); setStore('xp',xpData); }
+  addXP(5);
+  closeVisionModal();
+  renderVision();
+}
+
+// ═══════════════════════════════════════════════
+// NOTES
+// ═══════════════════════════════════════════════
+function renderNotes() {
+  let tree = document.getElementById('notesTree');
+  tree.innerHTML = '';
+  notes.forEach(n => {
+    tree.innerHTML += `<div class="note-tree-item ${n.id===activeNoteId?'active':''}" onclick="selectNote(${n.id})">
+      <span class="note-icon">${n.icon}</span> ${n.title || 'Untitled'}
+    </div>`;
+  });
+  // Load active note
+  let note = notes.find(n=>n.id===activeNoteId);
+  if(note) {
+    document.getElementById('noteTitle').value = note.title;
+    document.getElementById('noteBody').value = note.body;
+  } else {
+    document.getElementById('noteTitle').value = '';
+    document.getElementById('noteBody').value = '';
+  }
+}
+function selectNote(id) {
+  activeNoteId = id;
+  renderNotes();
+}
+function saveCurrentNote() {
+  let note = notes.find(n=>n.id===activeNoteId);
+  if(!note) return;
+  note.title = document.getElementById('noteTitle').value;
+  note.body = document.getElementById('noteBody').value;
+  setStore('notes', notes);
+  // Update tree
+  renderNotes();
+}
+function addNote() {
+  let newNote = { id:uid(), icon:'📄', title:'Untitled', body:'' };
+  notes.unshift(newNote);
+  activeNoteId = newNote.id;
+  setStore('notes', notes);
+  if(!xpData.badges.notes_created) { xpData.badges.notes_created=true; addXP(10); setStore('xp',xpData); }
+  renderNotes();
+  document.getElementById('noteTitle').focus();
+}
+
+// ═══════════════════════════════════════════════
+// GAMIFICATION PANEL
+// ═══════════════════════════════════════════════
+function toggleGamPanel() {
+  document.getElementById('gamPanel').classList.toggle('open');
+}
+function updateGamPanel() {
+  let li = getLevelInfo();
+  document.getElementById('gamLevel').textContent = `Level ${li.lvl} · ${li.name}`;
+  document.getElementById('gamXp').textContent = `${xpData.xp} / ${li.nextXp} XP`;
+  let pct = ((xpData.xp - li.currentMin) / (li.nextXp - li.currentMin)) * 100;
+  document.getElementById('gamXpBar').style.width = Math.min(100,pct)+'%';
+
+  // Badges
+  let bg = document.getElementById('badgeGrid');
+  bg.innerHTML = '';
+  ALL_BADGES.forEach(b => {
+    let earned = !!xpData.badges[b.id];
+    bg.innerHTML += `<div class="badge-item ${earned?'':'locked'}" title="${b.label}">
+      ${b.icon}
+      <div class="badge-tooltip">${b.label}</div>
+    </div>`;
+  });
+
+  // Leaderboard (simulated friends)
+  let lb = document.getElementById('leaderboard');
+  let friends = [
+    { name:'@sarah', lvl:8, xp: xpData.xp + 320, avatar:'S' },
+    { name:'@you', lvl:li.lvl, xp: xpData.xp, avatar:'Y' },
+    { name:'@maria', lvl:6, xp: xpData.xp - 180, avatar:'M' },
+    { name:'@alex', lvl:5, xp: xpData.xp - 400, avatar:'A' },
+  ].sort((a,b)=>b.xp-a.xp);
+  lb.innerHTML = '';
+  friends.forEach((f,i) => {
+    let rankClass = i===0?'gold':i===1?'silver':'bronze';
+    lb.innerHTML += `<div class="leaderboard-item">
+      <div class="lb-rank ${rankClass}">${i+1}</div>
+      <div class="lb-avatar">${f.avatar}</div>
+      <div class="lb-name">${f.name} <span style="color:var(--text-muted);font-size:10px;">Lv${f.lvl}</span></div>
+      <div class="lb-xp">${f.xp} xp</div>
+    </div>`;
+  });
+}
+
+// ═══════════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════════
+function openModal(id) {
+  if(id==='taskModal') populateTaskGoalLinks();
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', function(e) { if(e.target===this) this.classList.remove('open'); });
+});
+
+// ═══════════════════════════════════════════════
+// SEED SOME HISTORICAL HEATMAP DATA for demo
+// ═══════════════════════════════════════════════
+function seedHeatmapData() {
+  // Only seed once
+  if(getStore('heatmap_seeded', false)) return;
+  let year = new Date().getFullYear();
+  let today = new Date();
+  for(let i=60; i>=1; i--) {
+    let d = new Date(today);
+    d.setDate(d.getDate()-i);
+    let key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    // Randomly complete 0-4 habits on past days (weighted toward more)
+    habits.forEach((h,idx) => {
+      if(Math.random() < 0.55 + (idx*0.05)) {
+        h.completions[key] = true;
+      }
+    });
+  }
+  setStore('habits', habits);
+  setStore('heatmap_seeded', true);
+}
+
+// ═══════════════════════════════════════════════
+// HEATMAP TOOLTIP
+// ═══════════════════════════════════════════════
+function showHeatTip(e, dateLabel, count) {
+  let tip = document.getElementById('heatTip');
+  let barColor = count === 0 ? 'var(--text-muted)' : 'var(--accent)';
+  tip.innerHTML = `<div style="font-weight:600;margin-bottom:3px;">${dateLabel}</div><div style="color:${barColor};">${count} habit${count!==1?'s':''} completed</div>`;
+  tip.style.opacity = '1';
+  moveTip(e);
+  document.addEventListener('mousemove', moveTip);
+}
+function moveTip(e) {
+  let tip = document.getElementById('heatTip');
+  tip.style.left = (e.clientX + 14) + 'px';
+  tip.style.top = (e.clientY - 10) + 'px';
+}
+function hideHeatTip() {
+  document.getElementById('heatTip').style.opacity = '0';
+  document.removeEventListener('mousemove', moveTip);
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+seedHeatmapData();
+renderDashboard();
+updateTimerDisplay();
+updateGamPanel();
+
+// Handle Drive banner visibility
+if (getStore('drive_banner_dismissed', false) || getStore('drive_token', null)) {
+  document.getElementById('driveConnectBanner').classList.add('hidden');
+}
+
+</script>
+</body>
+</html>
